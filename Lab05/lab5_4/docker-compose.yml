@@ -1,0 +1,48 @@
+version: "3.8"
+
+services:
+  mysqldb:
+    image: mysql:5.7
+    restart: unless-stopped
+    env_file: ./.env
+    environment:
+      - MYSQL_ROOT_PASSWORD=$MYSQL_ROOT_PASSWORD
+      - MYSQL_DATABASE=$MYSQL_DATABASE
+      - MYSQL_USER=$MYSQL_USER
+    ports:
+      - 33060:3306
+    volumes:
+      - db:/var/lib/mysql
+
+  movieapp:
+    depends_on:
+      - mysqldb
+    build: ./MovieApp
+    restart: on-failure
+    env_file: ./.env
+    ports:
+      - 8080:8080
+    environment:
+      SPRING_APPLICATION_JSON: '{
+        "spring.datasource.url"  : "jdbc:mysql://mysqldb:3306/demo?useSSL=false",
+        "spring.datasource.username" : "$MYSQL_USER",
+        "spring.datasource.password" : "$MYSQL_ROOT_PASSWORD",
+        "spring.jpa.properties.hibernate.dialect" : "org.hibernate.dialect.MySQL5InnoDBDialect",
+        "spring.jpa.hibernate.ddl-auto" : "update"
+      }'
+    volumes:
+      - .m2:/root/.m2
+    stdin_open: true
+    tty: true
+
+  my-app:
+    build:
+      context: ./my-app
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      - movieapp
+
+volumes:
+  db:
